@@ -27,7 +27,7 @@ module SolidQueue
 
         self.synchronize { @on_idle.call if queue_length <= 0 }
       end
-    end  
+    end
 
     def initialize(thread_size:, extra_claim_size:, on_idle: nil)
       @thread_size = thread_size
