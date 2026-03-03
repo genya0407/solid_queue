@@ -20,7 +20,7 @@ module SolidQueue
         wrap_in_app_executor do
           thread_execution.perform
         ensure
-          mutex.synchronize { on_idle.try(:call) if idle? }
+          mutex.synchronize { on_idle.try(:call) if executor.queue_length <= executor.length }
         end
       end.on_rejection! do |e|
         handle_thread_error(e)
@@ -32,7 +32,7 @@ module SolidQueue
     end
 
     def idle?
-      executor.queue_length <= executor.length
+      executor.queue_length < executor.length
     end
 
     private
