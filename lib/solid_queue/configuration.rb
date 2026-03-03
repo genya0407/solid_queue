@@ -18,6 +18,7 @@ module SolidQueue
       queues: "*",
       threads: 3,
       processes: 1,
+      extra_claim: 0,
       polling_interval: 0.1
     }
 

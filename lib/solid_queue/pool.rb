@@ -4,25 +4,22 @@ module SolidQueue
   class Pool
     include AppExecutor
 
-    attr_reader :size
+    attr_reader :thread_size, :extra_claim_size
 
     delegate :shutdown, :shutdown?, :wait_for_termination, to: :executor
 
-    def initialize(size, on_idle: nil)
-      @size = size
+    def initialize(thread_size:, extra_claim_size:, on_idle: nil)
+      @thread_size = thread_size
+      @extra_claim_size = extra_claim_size
       @on_idle = on_idle
-      @available_threads = Concurrent::AtomicFixnum.new(size)
       @mutex = Mutex.new
     end
 
     def post(execution)
-      available_threads.decrement
-
       Concurrent::Promises.future_on(executor, execution) do |thread_execution|
         wrap_in_app_executor do
           thread_execution.perform
         ensure
-          available_threads.increment
           mutex.synchronize { on_idle.try(:call) if idle? }
         end
       end.on_rejection! do |e|
@@ -30,16 +27,16 @@ module SolidQueue
       end
     end
 
-    def idle_threads
-      available_threads.value
+    def claim_size
+      executor.max_queue - executor.queue_length
     end
 
     def idle?
-      idle_threads > 0
+      executor.queue_length <= executor.length
     end
 
     private
-      attr_reader :available_threads, :on_idle, :mutex
+      attr_reader :on_idle, :mutex
 
       DEFAULT_OPTIONS = {
         min_threads: 0,
@@ -48,7 +45,7 @@ module SolidQueue
       }
 
       def executor
-        @executor ||= Concurrent::ThreadPoolExecutor.new DEFAULT_OPTIONS.merge(max_threads: size, max_queue: size)
+        @executor ||= Concurrent::ThreadPoolExecutor.new DEFAULT_OPTIONS.merge(max_threads: thread_size, max_queue: thread_size + extra_claim_size)
       end
   end
 end
