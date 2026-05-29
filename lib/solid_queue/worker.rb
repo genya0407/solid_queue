@@ -16,13 +16,13 @@ module SolidQueue
       # Ensure that the queues array is deep frozen to prevent accidental modification
       @queues = Array(options[:queues]).map(&:freeze).freeze
 
-      @pool = Pool.new(options[:threads], on_idle: -> { wake_up })
+      @pool = Pool.new(thread_size: options[:threads], extra_claim_size: options[:extra_claim], on_idle: -> { wake_up })
 
       super(**options)
     end
 
     def metadata
-      super.merge(queues: queues.join(","), thread_pool_size: pool.size)
+      super.merge(queues: queues.join(","), thread_pool_size: pool.thread_size)
     end
 
     private
@@ -38,7 +38,7 @@ module SolidQueue
 
       def claim_executions
         with_polling_volume do
-          SolidQueue::ReadyExecution.claim(queues, pool.idle_threads, process_id)
+          SolidQueue::ReadyExecution.claim(queues, pool.claim_size, process_id)
         end
       end
 
