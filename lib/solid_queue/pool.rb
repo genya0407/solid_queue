@@ -8,8 +8,9 @@ module SolidQueue
 
     delegate :shutdown, :shutdown?, :wait_for_termination, to: :executor
 
-    def initialize(size, on_idle: nil)
+    def initialize(size, worker, on_idle: nil)
       @size = size
+      @worker = worker
       @on_idle = on_idle
       @available_threads = Concurrent::AtomicFixnum.new(size)
       @mutex = Mutex.new
@@ -26,6 +27,7 @@ module SolidQueue
           mutex.synchronize { on_idle.try(:call) if idle? }
         end
       end.on_rejection! do |e|
+        @worker.stop
         handle_thread_error(e)
       end
     end

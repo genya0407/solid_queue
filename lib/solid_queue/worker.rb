@@ -16,7 +16,7 @@ module SolidQueue
       # Ensure that the queues array is deep frozen to prevent accidental modification
       @queues = Array(options[:queues]).map(&:freeze).freeze
 
-      @pool = Pool.new(options[:threads], on_idle: -> { wake_up })
+      @pool = Pool.new(options[:threads], self, on_idle: -> { wake_up })
 
       super(**options)
     end
